@@ -1,0 +1,8 @@
+digraph splines {
+	graph [splines=true]
+	node [shape=point]
+	a [color=blue pos="0,0!"]
+	b [color=green pos="100,0!"]
+	c [color=red pos="50,50!"]
+	a -> b [pos="0,0 30,66 70,60 100,0"]
+}
