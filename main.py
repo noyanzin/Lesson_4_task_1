@@ -9,7 +9,6 @@ from sklearn import datasets
 
 import numpy as np
 
-
 classification_data, classification_labels = datasets.make_classification(
     n_features=2,
     n_informative=2,
@@ -20,29 +19,27 @@ classification_data, classification_labels = datasets.make_classification(
 
 colors = ListedColormap(['red', 'blue'])
 light_colors = ListedColormap(['lightcoral', 'lightblue'])
-
-plt.figure(figsize=(8, 8))
-plt.scatter(list(map(lambda x: x[0], classification_data)),
-            list(map(lambda x: x[1], classification_data)),
-            c=classification_labels,
-            cmap=colors)
-
+fig, ax = plt.subplots()
+# plt.figure(figsize=(8, 8))
+ax.scatter(list(map(lambda x: x[0], classification_data)),
+           list(map(lambda x: x[1], classification_data)),
+           c=classification_labels,
+           cmap=colors)
 plt.show()
-
 
 # Реализуем класс узла
 
-class Node:
 
-    def __init__(self, index, t, true_branch, false_branch):
+class Node:
+    def __init__(self, index, t, true_branch, false_branch, depth):
         self.index = index  # индекс признака, по которому ведется сравнение с порогом в этом узле
         self.t = t  # значение порога
         self.true_branch = true_branch  # поддерево, удовлетворяющее условию в узле
         self.false_branch = false_branch  # поддерево, не удовлетворяющее условию в узле
+        self.depth = depth  # глубина рекурсии
 
 
 class Leaf:
-
     def __init__(self, data, labels):
         self.data = data
         self.labels = labels
@@ -82,6 +79,7 @@ def gini(labels):
 # Расчет качества
 
 def quality(left_labels, right_labels, current_gini):
+    # Расчет качества
     # доля выбоки, ушедшая в левое поддерево
     p = float(left_labels.shape[0]) / (left_labels.shape[0] + right_labels.shape[0])
 
@@ -106,7 +104,7 @@ def split(data, labels, index, t):
 
 def find_best_split(data, labels):
     #  обозначим минимальное количество объектов в узле
-    min_leaf = 5
+
 
     current_gini = gini(labels)
 
@@ -119,10 +117,9 @@ def find_best_split(data, labels):
     for index in range(n_features):
         # будем проверять только уникальные значения признака, исключая повторения
         t_values = np.unique([row[index] for row in data])
-
         for t in t_values:
             true_data, false_data, true_labels, false_labels = split(data, labels, index, t)
-            #  пропускаем разбиения, в которых в узле остается менее 5 объектов
+            #  пропускаем разбиения, в которых в узле остается менее min_leaf объектов
             if len(true_data) < min_leaf or len(false_data) < min_leaf:
                 continue
 
@@ -136,22 +133,26 @@ def find_best_split(data, labels):
 
 
 # Построение дерева с помощью рекурсивной функции
-
-def build_tree(data, labels):
+max_depth = int(input("Введите максимальную глубину дерева "))  # 3 Максимальная глубина рекурсии
+min_leaf = int(input("Введите минимальное количество объектов в узле "))  # 5 Минимальное количество объектов в узле
+def build_tree(data, labels, depth=0):
     quality, t, index = find_best_split(data, labels)
+    print(f'Search ==> t={t}, index={index}, depth={depth}')
 
-    #  Базовый случай - прекращаем рекурсию, когда нет прироста в качества
-    if quality == 0:
+
+    #  Базовый случай - прекращаем рекурсию, когда нет прироста в качестве
+    if quality == 0 or depth >= max_depth:
         return Leaf(data, labels)
 
     true_data, false_data, true_labels, false_labels = split(data, labels, index, t)
 
     # Рекурсивно строим два поддерева
-    true_branch = build_tree(true_data, true_labels)
-    false_branch = build_tree(false_data, false_labels)
+    depth += 1
+    true_branch = build_tree(true_data, true_labels, depth)
+    false_branch = build_tree(false_data, false_labels, depth)
 
     # Возвращаем класс узла со всеми поддеревьями, то есть целого дерева
-    return Node(index, t, true_branch, false_branch)
+    return Node(index, t, true_branch, false_branch, depth)
 
 
 def classify_object(obj, node):
@@ -215,6 +216,7 @@ train_answers = predict(train_data, my_tree)
 # И получим ответы для тестовой выборки
 answers = predict(test_data, my_tree)
 
+
 # Введем функцию подсчета точности как доли правильных ответов
 def accuracy_metric(actual, predicted):
     correct = 0
@@ -222,6 +224,7 @@ def accuracy_metric(actual, predicted):
         if actual[i] == predicted[i]:
             correct += 1
     return correct / float(len(actual)) * 100.0
+
 
 # Точность на обучающей выборке
 train_accuracy = accuracy_metric(train_labels, train_answers)
